@@ -17,17 +17,16 @@ typedef enum{
     PRESS_CTRL_L_DOWN,
     PRESS_CTRL_L_UP,
     IDLE,
-    WAIT,
+    INITIAL_WAIT,
+    WAIT_FOR_BROWSER,
+    WAIT_FOR_YOUTUBE,
 } open_rickroll_state_machine_state_e;
 
 static uint8_t const conv_table[128][2] =  { HID_ASCII_TO_KEYCODE };
 static int pos = 0;
 
 // static open_rickroll_state_machine_state_e current_state = OPEN_BROWSER_KEY_UP;
-static open_rickroll_state_machine_state_e current_state = TYPING_URL_KEY_DOWN;
-
-const uint32_t wait_time_ms = 1000;
-static open_rickroll_state_machine_state_e state_after_wait = TYPING_URL_KEY_DOWN;
+static open_rickroll_state_machine_state_e current_state = INITIAL_WAIT;
 
 
 
@@ -57,14 +56,14 @@ static void print_next_char()
 
 static void press_browser()
 {
-    uint16_t volume_up = HID_USAGE_CONSUMER_AL_LOCAL_BROWSER;
-    tud_hid_report(REPORT_ID_CONSUMER_CONTROL, &volume_up, 2);
+    uint16_t cmd =     HID_USAGE_CONSUMER_AC_HOME;
+    tud_hid_report(REPORT_ID_CONSUMER_CONTROL, &cmd, 2);
 }
 
 static void press_play()
 {
-    uint16_t volume_up = HID_USAGE_CONSUMER_VOLUME_INCREMENT;
-    tud_hid_report(REPORT_ID_CONSUMER_CONTROL, &volume_up, 2);
+    uint16_t cmd = HID_USAGE_CONSUMER_PLAY_PAUSE;
+    tud_hid_report(REPORT_ID_CONSUMER_CONTROL, &cmd, 2);
 }
 
 static void press_ctrl_l()
@@ -81,8 +80,9 @@ static void press_enter()
     tud_hid_keyboard_report(REPORT_ID_KEYBOARD, 0, keycode);
 }
 
-static void wait()
+static void initial_wait()
 {
+    const uint32_t wait_time_ms = 2000;
     static int id = 0;
     if (id == 0) all_consumer_ctrl_key_up();
     if (id == 1) all_kb_key_up();
@@ -94,8 +94,43 @@ static void wait()
 
     if (board_millis() - start_ms < wait_time_ms) return; // not enough time
     start_ms += wait_time_ms;  
-    current_state = state_after_wait;
+    current_state = OPEN_BROWSER_KEY_DOWN;
 }
+
+static void wait_for_browser()
+{
+    const uint32_t wait_time_ms = 3000;
+    static int id = 0;
+    if (id == 0) all_consumer_ctrl_key_up();
+    if (id == 1) all_kb_key_up();
+    if (id == 2) all_kb_key_up(); //TODO: gamepad
+    id++;
+    id %= 3;
+
+    static uint32_t start_ms = 0;
+
+    if (board_millis() - start_ms < wait_time_ms) return; // not enough time
+    start_ms += wait_time_ms;  
+    current_state = PRESS_CTRL_L_DOWN;
+}
+
+static void wait_for_youtube()
+{
+    const uint32_t wait_time_ms = 10000;
+    static int id = 0;
+    if (id == 0) all_consumer_ctrl_key_up();
+    if (id == 1) all_kb_key_up();
+    if (id == 2) all_kb_key_up(); //TODO: gamepad
+    id++;
+    id %= 3;
+
+    static uint32_t start_ms = 0;
+
+    if (board_millis() - start_ms < wait_time_ms) return; // not enough time
+    start_ms += wait_time_ms;  
+    current_state = PRESS_PLAY_KEY_DOWN;
+}
+
 
 
 void rick_roller_trigger_next_action()
@@ -111,7 +146,7 @@ void rick_roller_trigger_next_action()
         break;
     case OPEN_BROWSER_KEY_UP:
         all_consumer_ctrl_key_up();
-        current_state = PRESS_CTRL_L_DOWN;        
+        current_state = WAIT_FOR_BROWSER;        
         break;
     case PRESS_CTRL_L_DOWN:
         press_ctrl_l();
@@ -123,7 +158,7 @@ void rick_roller_trigger_next_action()
         break;   
     case TYPING_URL_KEY_DOWN:
         print_next_char();
-        current_state = OPEN_BROWSER_KEY_UP;        
+        current_state = TYPING_URL_KEY_UP;        
         break;        
     case TYPING_URL_KEY_UP:
         all_kb_key_up();
@@ -131,12 +166,12 @@ void rick_roller_trigger_next_action()
         if (pos == sizeof(url) / sizeof(url[1]))
         {
             current_state = PRESS_ENTER_KEY_DOWN;
+            pos = 0;
         }
         else
         {
-            current_state = PRESS_ENTER_KEY_DOWN;
+            current_state = TYPING_URL_KEY_DOWN;
         }
-        pos = 0;
         break;
     case PRESS_ENTER_KEY_DOWN:
         press_enter();
@@ -144,20 +179,25 @@ void rick_roller_trigger_next_action()
         break;
     case PRESS_ENTER_KEY_UP:
         all_kb_key_up();
-        // current_state = PRESS_PLAY_KEY_DOWN;
-        current_state = TYPING_URL_KEY_DOWN;
-
+        current_state = WAIT_FOR_YOUTUBE;
         break;
     case PRESS_PLAY_KEY_DOWN:
         press_play();
+        current_state = PRESS_PLAY_KEY_UP;
         break;
     case PRESS_PLAY_KEY_UP:
         all_consumer_ctrl_key_up();
         current_state = IDLE;
         break;
-    case WAIT:
-        wait();
+    case INITIAL_WAIT:
+        initial_wait();
         break;
+    case WAIT_FOR_BROWSER:
+        wait_for_browser();
+        break;       
+    case WAIT_FOR_YOUTUBE:
+        wait_for_youtube();
+        break;         
     case IDLE:
         all_consumer_ctrl_key_up();
         current_state = IDLE;    
