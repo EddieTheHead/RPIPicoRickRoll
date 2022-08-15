@@ -56,14 +56,18 @@ static void print_next_char()
 
 static void press_browser()
 {
-    uint16_t cmd =     HID_USAGE_CONSUMER_AC_HOME;
-    tud_hid_report(REPORT_ID_CONSUMER_CONTROL, &cmd, 2);
+    // uint16_t cmd = 0xf0;
+    // tud_hid_report(REPORT_ID_CONSUMER_CONTROL, &cmd, 2);
+    uint8_t keycode[6] = { 0 };
+    keycode[0] = 0xf0;
+    tud_hid_keyboard_report(REPORT_ID_KEYBOARD, 0, keycode);
 }
 
 static void press_play()
 {
-    uint16_t cmd = HID_USAGE_CONSUMER_PLAY_PAUSE;
-    tud_hid_report(REPORT_ID_CONSUMER_CONTROL, &cmd, 2);
+    // uint16_t cmd = HID_USAGE_CONSUMER_PLAY_PAUSE;
+    // tud_hid_report(REPORT_ID_CONSUMER_CONTROL, &cmd, 2);
+    print_char(' ');
 }
 
 static void press_ctrl_l()
@@ -116,7 +120,7 @@ static void wait_for_browser()
 
 static void wait_for_youtube()
 {
-    const uint32_t wait_time_ms = 10000;
+    const uint32_t wait_time_ms = 5000;
     static int id = 0;
     if (id == 0) all_consumer_ctrl_key_up();
     if (id == 1) all_kb_key_up();
@@ -145,7 +149,8 @@ void rick_roller_trigger_next_action()
         current_state = OPEN_BROWSER_KEY_UP;
         break;
     case OPEN_BROWSER_KEY_UP:
-        all_consumer_ctrl_key_up();
+        // all_consumer_ctrl_key_up();
+        all_kb_key_up();
         current_state = WAIT_FOR_BROWSER;        
         break;
     case PRESS_CTRL_L_DOWN:
@@ -186,7 +191,8 @@ void rick_roller_trigger_next_action()
         current_state = PRESS_PLAY_KEY_UP;
         break;
     case PRESS_PLAY_KEY_UP:
-        all_consumer_ctrl_key_up();
+        // all_consumer_ctrl_key_up();
+        all_kb_key_up();
         current_state = IDLE;
         break;
     case INITIAL_WAIT:
