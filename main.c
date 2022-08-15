@@ -1,6 +1,7 @@
 /* 
  * The MIT License (MIT)
  *
+ * Copyright (c) 2022 Hubert Bossy 
  * Copyright (c) 2019 Ha Thach (tinyusb.org)
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -105,7 +106,42 @@ void tud_resume_cb(void)
 // USB HID
 //--------------------------------------------------------------------+
 
-// handled in rickroller.c
+// Every 10ms, we will sent 1 report for each HID profile (keyboard, mouse etc ..)
+// tud_hid_report_complete_cb() is used to send the next report after previous one is complete
+void hid_task(void)
+{
+    // Poll every 10ms
+    const uint32_t interval_ms = 10;
+    static uint32_t start_ms = 0;
+
+    if (board_millis() - start_ms < interval_ms) return; // not enough time
+    start_ms += interval_ms;
+
+    // Remote wakeup
+    if ( tud_suspended() )
+    {
+        // Wake up host if we are in suspend mode
+        // and REMOTE_WAKEUP feature is enabled by host
+        tud_remote_wakeup();
+    }
+    else
+    {
+      // Send the 1st of report chain, the rest will be sent by tud_hid_report_complete_cb()
+      rick_roller_trigger_next_action();
+    }
+}
+
+// Invoked when sent REPORT successfully to host
+// Application can use this to send the next report
+// Note: For composite reports, report[0] is report ID
+void tud_hid_report_complete_cb(uint8_t instance, uint8_t const* report, uint8_t len)
+{
+    (void) instance;
+    (void) len;
+
+    // do the key up report
+    rick_roller_trigger_next_action();
+}
 
 
 // Invoked when received GET_REPORT control request

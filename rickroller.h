@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-void hid_task(void);
-void tud_hid_report_complete_cb(uint8_t instance, uint8_t const* report, uint8_t len);
+void rick_roller_trigger_next_action();
+
 
 #endif  /*RICKROLLER_H*/
